@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "摸鱼办仪表盘",
+  "version": "3.4.0",
+  "description": "专业的摸鱼进度追踪工具，支持退休倒计时、自定义事件等功能",
+  "permissions": [
+    "storage"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "摸鱼办仪表盘",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

@@ -1,0 +1,64 @@
+:root{
+    --bg1: linear-gradient(135deg,#f6fbff,#fff1f8);
+    --card: rgba(255,255,255,0.95);
+    --text:#222;
+    --muted:#555;
+    --accent:#ff7eb3;
+    --accent2:#60d3ff;
+    --shadow:0 8px 24px rgba(0,0,0,0.08);
+}
+body.dark{
+    --bg1: linear-gradient(135deg,#0f1724,#1a2234);
+    --card: rgba(20,24,34,0.9);
+    --text:#eaeef5;
+    --muted:#aab5cc;
+    --accent:#60d3ff;
+    --shadow:0 6px 20px rgba(0,0,0,0.5);
+}
+*{box-sizing:border-box}
+body{
+    margin:0;padding:0;font-family:"PingFang SC","Segoe UI",Arial,sans-serif;
+    background:var(--bg1);color:var(--text);
+    width:800px;height:600px;overflow:auto;font-size:12px;transition:all .4s;position:relative;
+}
+
+/* 气泡 */
+.bubbles{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;z-index:0}
+.bubble{position:absolute;bottom:-100px;background:rgba(255,255,255,0.25);border-radius:50%;animation:rise 20s infinite linear}
+@keyframes rise{0%{transform:translateY(0) scale(1);opacity:0.7}100%{transform:translateY(-120vh) scale(1.5);opacity:0}}
+body.dark .bubble{background:rgba(80,160,255,0.18)}
+
+/* 容器 */
+.container{max-width:780px;margin:0 auto;padding:16px;height:100%;display:flex;flex-direction:column;justify-content:space-between;position:relative;z-index:2}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.title{font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px}
+.sub{font-size:11px;color:var(--muted)}
+
+/* 两列网格 */
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;flex-grow:1}
+
+/* 卡片样式 */
+.card{background:var(--card);border-radius:10px;padding:14px;box-shadow:var(--shadow);display:flex;flex-direction:column;}
+.card h4{margin:0 0 8px 0;font-size:14px}
+.small{font-size:11px;color:var(--muted)}
+
+/* 进度条 */
+.progress{height:10px;border-radius:999px;background:rgba(0,0,0,0.08);overflow:hidden;margin:6px 0}
+.progress .bar{height:100%;background:var(--accent);width:0%;transition:width 1s}
+.progress.retire .bar{background:linear-gradient(90deg,var(--accent2),var(--accent))}
+
+/* 列表 */
+ul.min{list-style:none;padding:0;margin:6px 0 0 0}
+ul.min li{padding:4px 0;border-bottom:1px dashed rgba(0,0,0,0.08);font-size:11px}
+
+/* 设置按钮 / 面板 */
+.settings-btn{position:fixed;right:16px;bottom:16px;width:40px;height:40px;border-radius:50%;background:var(--accent);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 6px 20px rgba(255,120,160,0.3);z-index:10;transition:all .25s}
+.settings-btn:hover{transform:rotate(90deg) scale(1.05)}
+#panel{position:fixed;right:16px;bottom:70px;width:300px;background:var(--card);border-radius:10px;box-shadow:var(--shadow);padding:12px;display:none;z-index:1000;max-height:400px;overflow:auto}
+#panel h3{margin-top:0;font-size:14px}
+#panel label{display:block;margin-top:8px;font-size:11px;color:var(--muted)}
+#panel input,#panel select{width:100%;padding:6px;border-radius:4px;border:1px solid rgba(0,0,0,0.08);margin-top:4px;background:transparent;color:var(--text);font-size:11px}
+#panel button{width:100%;margin-top:8px;padding:8px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;font-size:12px}
+
+.footer{text-align:center;font-size:10px;color:var(--muted);margin-top:8px}
+.quote{margin-top:6px;text-align:center;font-style:italic;color:var(--accent);font-size:12px}
