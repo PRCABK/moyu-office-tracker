@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>摸鱼办 v3.4 更新（退休进度条 + 排序调整）</title>
+<style>
+:root{
+  --bg1: linear-gradient(135deg,#f6fbff,#fff1f8);
+  --card: rgba(255,255,255,0.95);
+  --text:#222;
+  --muted:#555;
+  --accent:#ff7eb3;
+  --accent2:#60d3ff;
+  --shadow:0 8px 24px rgba(0,0,0,0.08);
+}
+body.dark{
+  --bg1: linear-gradient(135deg,#0f1724,#1a2234);
+  --card: rgba(20,24,34,0.9);
+  --text:#eaeef5;
+  --muted:#aab5cc;
+  --accent:#60d3ff;
+  --shadow:0 6px 20px rgba(0,0,0,0.5);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;padding:0;font-family:"PingFang SC","Segoe UI",Arial,sans-serif;
+  background:var(--bg1);color:var(--text);
+  height:100vh;overflow:hidden;font-size:115%;transition:all .4s;position:relative;
+}
+
+/* 气泡 */
+.bubbles{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;z-index:0}
+.bubble{position:absolute;bottom:-100px;background:rgba(255,255,255,0.25);border-radius:50%;animation:rise 20s infinite linear}
+@keyframes rise{0%{transform:translateY(0) scale(1);opacity:0.7}100%{transform:translateY(-120vh) scale(1.5);opacity:0}}
+body.dark .bubble{background:rgba(80,160,255,0.18)}
+
+/* 容器 */
+.container{max-width:1100px;margin:0 auto;padding:24px;height:100vh;display:flex;flex-direction:column;justify-content:space-between;position:relative;z-index:2}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.title{font-size:28px;font-weight:700;display:flex;align-items:center;gap:10px}
+.sub{font-size:15px;color:var(--muted)}
+
+/* 两列网格 */
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;flex-grow:1}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+
+/* 卡片样式 */
+.card{background:var(--card);border-radius:14px;padding:22px;box-shadow:var(--shadow);display:flex;flex-direction:column;}
+.card h4{margin:0 0 10px 0;font-size:20px}
+.small{font-size:15px;color:var(--muted)}
+
+/* 进度条 */
+.progress{height:14px;border-radius:999px;background:rgba(0,0,0,0.08);overflow:hidden;margin:10px 0}
+.progress .bar{height:100%;background:var(--accent);width:0%;transition:width 1s}
+.progress.retire .bar{background:linear-gradient(90deg,var(--accent2),var(--accent))}
+
+/* 列表 */
+ul.min{list-style:none;padding:0;margin:10px 0 0 0}
+ul.min li{padding:8px 0;border-bottom:1px dashed rgba(0,0,0,0.08);font-size:17px}
+
+/* 设置按钮 / 面板 */
+.settings-btn{position:fixed;right:28px;bottom:28px;width:58px;height:58px;border-radius:50%;background:var(--accent);color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 30px rgba(255,120,160,0.3);z-index:10;transition:all .25s}
+.settings-btn:hover{transform:rotate(90deg) scale(1.05)}
+#panel{position:fixed;right:28px;bottom:100px;width:360px;background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:18px;display:none;z-index:1000;max-height:75vh;overflow:auto}
+#panel h3{margin-top:0;font-size:18px}
+#panel label{display:block;margin-top:10px;font-size:13px;color:var(--muted)}
+#panel input,#panel select{width:100%;padding:8px;border-radius:6px;border:1px solid rgba(0,0,0,0.08);margin-top:6px;background:transparent;color:var(--text)}
+#panel button{width:100%;margin-top:12px;padding:10px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
+
+.footer{text-align:center;font-size:13px;color:var(--muted);margin-top:12px}
+.quote{margin-top:8px;text-align:center;font-style:italic;color:var(--accent);font-size:15px}
+</style>
+</head>
+<body>
+  <div class="bubbles" id="bubbles"></div>
+
+  <div class="container">
+    <div class="header">
+      <div>
+        <div class="title">🐟 摸鱼办仪表盘 <span style="font-size:14px;color:var(--muted)">v3.4</span></div>
+        <div class="sub">日历 · 气泡动画 · 本地保存</div>
+      </div>
+      <div style="text-align:right">
+        <div id="nowTime" class="sub"></div>
+        <div id="tz" class="sub"></div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- 今日进度 -->
+      <div class="card">
+        <h4>今日摸鱼进度</h4>
+        <div class="progress"><div class="bar" id="bar-today"></div></div>
+        <div class="small" id="today-info"></div>
+      </div>
+
+      <!-- 本周进度 -->
+      <div class="card">
+        <h4>本周摸鱼进度</h4>
+        <div class="progress"><div class="bar" id="bar-week"></div></div>
+        <div class="small" id="week-info"></div>
+      </div>
+
+      <!-- 周末 -->
+      <div class="card">
+        <h4>距离周末</h4>
+        <div class="small" id="weekend"></div>
+      </div>
+
+      <!-- 发工资 -->
+      <div class="card">
+        <h4>距离发工资（20号）</h4>
+        <div class="small" id="salary"></div>
+      </div>
+
+      <!-- 自定义倒计时（并列 左） -->
+      <div class="card">
+        <h4>自定义倒计时</h4>
+        <ul class="min" id="custom-list"></ul>
+      </div>
+
+      <!-- 节假日倒计时（并列 右） -->
+      <div class="card">
+        <h4>节假日倒计时</h4>
+        <ul class="min" id="holiday-list"></ul>
+      </div>
+
+      <!-- 退休倒计时（含进度条） -->
+      <div class="card">
+        <h4>退休倒计时</h4>
+        <div class="small" id="retire-info"></div>
+        <div class="progress retire"><div class="bar" id="bar-retire"></div></div>
+        <div class="small" id="retire-remaining"></div>
+      </div>
+
+      <!-- 摸鱼语录（与退休并列） -->
+      <div class="card">
+        <h4>摸鱼语录</h4>
+        <div class="quote" id="quote"></div>
+      </div>
+    </div>
+
+    <div class="footer">© 2025 摸鱼办 · 日历版</div>
+  </div>
+
+  <div class="settings-btn" id="btn-settings">⚙️</div>
+
+  <div id="panel">
+    <h3>设置</h3>
+    <label>上班时间</label>
+    <input type="time" id="cfg-start">
+    <label>下班时间</label>
+    <input type="time" id="cfg-end">
+    <label>入职日期</label>
+    <input type="date" id="cfg-hire">
+    <label>性别（用于退休年龄计算）</label>
+    <select id="cfg-gender"><option value="male">男（60岁）</option><option value="female">女（55岁）</option></select>
+    <label>积极语录时间段（起始）</label><input type="time" id="cfg-active-start">
+    <label>积极语录时间段（结束）</label><input type="time" id="cfg-active-end">
+    <label>刷新间隔（秒，最小5）</label>
+    <input type="number" id="cfg-refresh" min="5" step="1">
+    <label>夜间模式</label>
+    <select id="cfg-dark"><option value="off">关闭</option><option value="on">开启</option></select>
+	<label>工作日范围（1-7，例如 1-5）</label>
+	<input type="text" id="cfg-weekdays" placeholder="默认 1-5">
+    <label>自定义倒计时 1</label><input type="text" id="c1-name" placeholder="名称"><input type="date" id="c1-date">
+    <label>自定义倒计时 2</label><input type="text" id="c2-name" placeholder="名称"><input type="date" id="c2-date">
+    <label>自定义倒计时 3</label><input type="text" id="c3-name" placeholder="名称"><input type="date" id="c3-date">
+    <label>自定义倒计时 4</label><input type="text" id="c4-name" placeholder="名称"><input type="date" id="c4-date">
+	<label>自定义倒计时 5</label><input type="text" id="c5-name" placeholder="名称"><input type="date" id="c5-date">
+	<label>发薪日期（1-31）</label>
+	<input type="number" id="cfg-salaryday" min="1" max="31" placeholder="默认 20">
+    <button id="save">保存</button>
+  </div>
+
+<script>
+/* v3.4 updated script
+ - 排序调整：custom 与 holiday 并列；retire 与 quote 并列
+ - 退休进度条：表示 (now - hire) / (retire - hire)
+ - 支持 4 个自定义倒计时
+ - 智能语录（积极/放松/特殊事件）
+ - 气泡动画、localStorage、刷新间隔、夜间模式保留
+*/
+
+const STORAGE_KEY = "moyu_v34_updated";
+const DEFAULT = {
+  start: "09:00",
+  end: "18:00",
+  hire: new Date().toISOString().split("T")[0],
+  gender: "male",
+  refresh: 60,
+  dark: "off",
+  activeStart: "09:00",
+  activeEnd: "11:00",
+  salaryDay: 20, // ✅ 默认发薪日
+  custom: [] // up to 4 {n,d}
+};
+
+let cfg = {};
+let timer = null;
+
+// load settings
+function load(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    cfg = Object.assign({}, DEFAULT, raw ? JSON.parse(raw) : {});
+  } catch(e) {
+    cfg = Object.assign({}, DEFAULT);
+  }
+  document.body.classList.toggle("dark", cfg.dark === "on");
+}
+
+// save settings (reads panel inputs)
+function save(){
+  cfg.start = document.getElementById("cfg-start").value || DEFAULT.start;
+  cfg.end = document.getElementById("cfg-end").value || DEFAULT.end;
+  cfg.hire = document.getElementById("cfg-hire").value || DEFAULT.hire;
+  cfg.gender = document.getElementById("cfg-gender").value || DEFAULT.gender;
+  cfg.activeStart = document.getElementById("cfg-active-start").value || DEFAULT.activeStart;
+  cfg.activeEnd = document.getElementById("cfg-active-end").value || DEFAULT.activeEnd;
+  cfg.refresh = Math.max(5, parseInt(document.getElementById("cfg-refresh").value) || DEFAULT.refresh);
+  cfg.dark = document.getElementById("cfg-dark").value || DEFAULT.dark;
+  cfg.weekdays = document.getElementById("cfg-weekdays").value || "1-5";
+  cfg.salaryDay = parseInt(document.getElementById("cfg-salaryday").value) || DEFAULT.salaryDay;
+  // customs: 5
+  const customs = [];
+  for(let i=1;i<=5;i++){
+    const name = document.getElementById(`c${i}-name`).value.trim();
+    const date = document.getElementById(`c${i}-date`).value;
+    if(name && date) customs.push({n:name, d:date});
+  }
+  cfg.custom = customs;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+  document.body.classList.toggle("dark", cfg.dark === "on");
+  start(); // restart timer
+}
+
+// fill panel with current cfg
+function fillPanel(){
+  document.getElementById("cfg-start").value = cfg.start;
+  document.getElementById("cfg-end").value = cfg.end;
+  document.getElementById("cfg-hire").value = cfg.hire;
+  document.getElementById("cfg-gender").value = cfg.gender;
+  document.getElementById("cfg-active-start").value = cfg.activeStart;
+  document.getElementById("cfg-active-end").value = cfg.activeEnd;
+  document.getElementById("cfg-refresh").value = cfg.refresh;
+  document.getElementById("cfg-dark").value = cfg.dark;
+  document.getElementById("cfg-weekdays").value = cfg.weekdays || "1-5";
+  document.getElementById("cfg-salaryday").value = cfg.salaryDay;
+  for(let i=1;i<=5;i++){
+    document.getElementById(`c${i}-name`).value = cfg.custom[i-1]?.n || "";
+    document.getElementById(`c${i}-date`).value = cfg.custom[i-1]?.d || "";
+  }
+}
+
+// small helpers
+function fmtMs(ms){
+  if(ms <= 0) return "已到";
+  const d = Math.floor(ms / 86400000);
+  const h = Math.floor((ms % 86400000) / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  return `${d}天${h}小时${m}分钟`;
+}
+function daysCeil(a,b){ return Math.ceil((b - a) / 86400000); }
+function clamp(n,min,max){ return Math.min(max, Math.max(min, n)); }
+
+// update UI (core)
+function update(){
+  const now = new Date();
+  document.getElementById("nowTime").textContent = now.toLocaleString();
+  document.getElementById("tz").textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  // 今日进度
+  const [sh,sm] = cfg.start.split(":").map(Number);
+  const [eh,em] = cfg.end.split(":").map(Number);
+  const dayStart = new Date(now); dayStart.setHours(sh,sm,0,0);
+  const dayEnd = new Date(now); dayEnd.setHours(eh,em,0,0);
+  const pctToday = clamp((now - dayStart) / (dayEnd - dayStart) * 100, 0, 100);
+  document.getElementById("bar-today").style.width = pctToday.toFixed(2) + "%";
+  document.getElementById("today-info").textContent = `已过 ${pctToday.toFixed(1)}%，离下班 ${fmtMs(dayEnd - now)}`;
+
+  // ✅ 本周进度（支持自定义工作周）
+  const weekRange = (cfg.weekdays || "1-5").split("-");
+  const startDay = parseInt(weekRange[0]), endDay = parseInt(weekRange[1]);
+  const cur = new Date(now);
+  const day = cur.getDay() || 7; // 周日=7
+  const weekStart = new Date(cur); weekStart.setDate(cur.getDate() - (day - startDay)); weekStart.setHours(0,0,0,0);
+  const weekEnd = new Date(cur); weekEnd.setDate(cur.getDate() + (endDay - day)); weekEnd.setHours(23,59,59,999);
+  const weekPct = clamp((now - weekStart) / (weekEnd - weekStart) * 100, 0, 100);
+  document.getElementById("bar-week").style.width = weekPct.toFixed(2) + "%";
+  document.getElementById("week-info").textContent = `已过 ${weekPct.toFixed(1)}%，剩余 ${(100-weekPct).toFixed(1)}%`;
+
+  // 周末倒计时
+  const nextSat = new Date(now); nextSat.setDate(now.getDate() + ((6 - now.getDay()) % 7)); nextSat.setHours(0,0,0,0);
+  document.getElementById("weekend").textContent = fmtMs(nextSat - now);
+
+ // ✅ 发薪（支持自定义发薪日）
+ let pay = new Date(now.getFullYear(), now.getMonth(), cfg.salaryDay);
+ if (now > pay) pay.setMonth(pay.getMonth() + 1);
+ document.getElementById("salary").textContent = fmtMs(pay - now);
+ // 动态更新标题
+const salaryTitle = document.querySelector('h4:has(+ #salary)'); // 选中“距离发工资”这张卡片的标题
+if (salaryTitle) salaryTitle.textContent = `距离发工资（${cfg.salaryDay}号）`;
+
+  // 自定义倒计时
+  const cl = document.getElementById("custom-list"); cl.innerHTML = "";
+  for(let i=0;i<5;i++){
+    const c = cfg.custom[i];
+    const li = document.createElement("li");
+    if(c){
+      const t = new Date(c.d);
+      li.textContent = `${c.n}：还有 ${daysCeil(now,t)} 天 (${c.d})`;
+    } else li.textContent = `${i+1}. 未设置`;
+    cl.appendChild(li);
+  }
+
+  // 节假日
+  const HOL = [
+    {n:"元旦",m:1,d:1},
+    {n:"春节",m:2,d:1},
+	{n:"清明节",m:4,d:4},
+    {n:"劳动节",m:5,d:1},
+    {n:"国庆节",m:10,d:1}
+  ];
+  const hl = document.getElementById("holiday-list"); hl.innerHTML="";
+  HOL.forEach(h=>{
+    let t = new Date(now.getFullYear(),h.m-1,h.d);
+    if(t<now) t.setFullYear(t.getFullYear()+1);
+    const li=document.createElement("li");
+    li.textContent=`${h.n}：还有 ${daysCeil(now,t)} 天 (${t.getFullYear()}-${h.m}-${h.d})`;
+    hl.appendChild(li);
+  });
+
+  // ✅ 退休倒计时（月数显示）
+  const hireDate = new Date(cfg.hire);
+  const retireYears = cfg.gender==="female"?55:60;
+  const retireDate = new Date(hireDate); retireDate.setFullYear(hireDate.getFullYear()+retireYears);
+  const totalMonths = (retireDate.getFullYear()-hireDate.getFullYear())*12 + retireDate.getMonth()-hireDate.getMonth();
+  const passedMonths = (now.getFullYear()-hireDate.getFullYear())*12 + now.getMonth()-hireDate.getMonth();
+  const pct = clamp(passedMonths/totalMonths*100,0,100);
+  document.getElementById("bar-retire").style.width = pct.toFixed(2)+"%";
+  document.getElementById("retire-info").textContent = `入职：${cfg.hire} ・ 退休年龄：${retireYears}岁`;
+  document.getElementById("retire-remaining").textContent = `已工作 ${passedMonths} 个月 · 剩余 ${totalMonths - passedMonths} 个月`;
+
+// ✅ 智能摸鱼语录系统
+const quoteEl = document.getElementById("quote");
+quoteEl.style.opacity = "0";
+
+setTimeout(() => {
+  const activeQuotes = [
+    "摸鱼是门艺术，要讲节奏 🎨",
+    "认真摸鱼，快乐加倍 🐠",
+    "效率摸鱼两不误 💼",
+    "放松片刻，更好出发 ☕",
+    "摸鱼不误正业，反而助力效率 ⚡"
+  ];
+
+  const relaxQuotes = [
+    "摸鱼使我快乐 😎",
+    "摸鱼是对工作的尊重 ✨",
+    "你摸，我摸，大家都摸 🐟",
+    "一摸解千愁 🍃",
+    "今天也要摸得自然 🧘"
+  ];
+
+  const weekendQuotes = [
+    "工作才开始，忍着！💪",
+    "胜利在望，摸鱼蓄力！🚀",
+    "今天就是周五！恭喜下班！🎉"
+  ];
+
+  const salaryQuotes = [
+    "钱包正在路上，请注意查收 💰",
+    "发薪倒计时，信心满满 💵"
+  ];
+
+  const hr = now.getHours();
+
+  // 计算距离周末
+  const nextSat = new Date(now);
+  nextSat.setDate(now.getDate() + ((6 - now.getDay()) % 7));
+  nextSat.setHours(0, 0, 0, 0);
+  const daysToWeekend = daysCeil(now, nextSat);
+
+ // 计算距离发薪（用户自定义）
+  let pay = new Date(now.getFullYear(), now.getMonth(), cfg.salaryDay);
+  if (now > pay) pay.setMonth(pay.getMonth() + 1);
+  const daysToPay = daysCeil(now, pay);
+
+
+  let quote = "";
+
+  // 🧭 优先级：发薪 → 周末 → 普通时间段
+  if (daysToPay < 5) {
+    quote = salaryQuotes[Math.floor(Math.random() * salaryQuotes.length)];
+  } else if (daysToWeekend > 3) {
+    quote = weekendQuotes[0]; // “工作才开始，忍着！”
+  } else if (daysToWeekend === 1) {
+    quote = weekendQuotes[1]; // “胜利在望...”
+  } else if (daysToWeekend === 0) {
+    quote = weekendQuotes[2]; // “今天就是周五！”
+  } else {
+    // 判断积极时间段（可配置）
+    const [ah, am] = cfg.activeStart.split(":").map(Number);
+    const [bh, bm] = cfg.activeEnd.split(":").map(Number);
+    const activeStart = ah * 60 + am;
+    const activeEnd = bh * 60 + bm;
+    const current = hr * 60 + now.getMinutes();
+    if (current >= activeStart && current <= activeEnd) {
+      quote = activeQuotes[Math.floor(Math.random() * activeQuotes.length)];
+    } else {
+      quote = relaxQuotes[Math.floor(Math.random() * relaxQuotes.length)];
+    }
+  }
+
+  quoteEl.textContent = quote;
+  quoteEl.style.transition = "opacity 1s";
+  quoteEl.style.opacity = "1";
+}, 100);
+}
+
+// start timer respecting cfg.refresh
+function start(){
+  if(timer) clearInterval(timer);
+  update();
+  timer = setInterval(update, cfg.refresh * 1000);
+}
+
+// bubbles
+function createBubbles(){
+  const wrapper = document.getElementById("bubbles");
+  wrapper.innerHTML = "";
+  for(let i=0;i<16;i++){
+    const b = document.createElement("div");
+    b.className = "bubble";
+    const size = Math.round(Math.random()*45 + 10);
+    b.style.width = size + "px";
+    b.style.height = size + "px";
+    b.style.left = (Math.random()*90) + "%";
+    b.style.animationDuration = (12 + Math.random()*12) + "s";
+    b.style.animationDelay = (Math.random()*8) + "s";
+    wrapper.appendChild(b);
+  }
+}
+
+// UI bindings
+document.getElementById("btn-settings").onclick = () => {
+  const p = document.getElementById("panel");
+  p.style.display = (p.style.display === "block") ? "none" : "block";
+  fillPanel();
+};
+document.getElementById("save").onclick = () => {
+  save();
+  document.getElementById("panel").style.display = "none";
+};
+
+// init
+load();
+createBubbles();
+start();
+
+</script>
+</body>
+</html>
